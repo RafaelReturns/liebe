@@ -113,7 +113,7 @@
             </div>
 
             <div class="space-y-3 mt-4">
-                <label class="text-xs uppercase tracking-widest font-semibold text-pink-300/80 pl-1">Məni nə qədər sevirsən?</label>
+                <label class="text-xs uppercase tracking-widest font-semibold text-pink-300/80 pl-1">Mənə nə qədər dəyər verirsən?</label>
                 <textarea id="love-message" rows="3" class="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/50 transition-all resize-none shadow-inner text-sm" placeholder="Ürəyindən keçənləri yaz..."></textarea>
                 <button onclick="sendEmail()" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 shadow-lg shadow-pink-500/40 transition-all py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 text-white transform hover:scale-[1.02]">
                     <i class="ph ph-paper-plane-tilt text-xl"></i> Göndər
@@ -268,7 +268,7 @@
             const templateParams = { message: message };
 
             // service_s31oywk və template_ttn58pi sizin ID-lərdir
-            emailjs.send('service_s31oywk', 'template_ttn58pi', templateParams)
+            emailjs.send('service_jtdxoo6', 'template_kli0se6', templateParams)
                 .then(function(response) {
                     showToast("Mesajın uğurla çatdı!");
                     document.getElementById('love-message').value = ""; 
