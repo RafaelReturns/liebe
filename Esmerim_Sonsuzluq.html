@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Əsmərimə — Sonsuzluq</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- EmailJS Kitabxanası əlavə edildi -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;900&family=Playfair+Display:ital,wght@0,400;0,600;0,900;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; 
+        }
+
+        .bg-lights {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; overflow: hidden; pointer-events: none; transition: opacity 1s ease;
+        }
+        .blob {
+            position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.8;
+        }
+        .blob-1 { width: 350px; height: 350px; background: #ec4899; top: -10%; left: -10%; animation: float1 10s infinite alternate ease-in-out; }
+        .blob-2 { width: 450px; height: 450px; background: #8b5cf6; bottom: -20%; right: -10%; animation: float2 12s infinite alternate ease-in-out; }
+        .blob-3 { width: 300px; height: 300px; background: #3b82f6; top: 30%; left: 30%; animation: float3 14s infinite alternate ease-in-out; }
+
+        @keyframes float1 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(20vw, 15vh) scale(1.2); } }
+        @keyframes float2 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(-25vw, -20vh) scale(1.1); } }
+        @keyframes float3 { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(15vw, -15vh) scale(1.3); } }
+
+        @keyframes float-card { 0% { transform: translateY(0px); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0px); } }
+        .animate-float-card { animation: float-card 6s ease-in-out infinite; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.06); backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+        }
+
+        .view-section {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; display: flex; flex-direction: column;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .view-hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .kafka-text { font-family: 'Playfair Display', serif; line-height: 1.8; letter-spacing: 0.02em; }
+        .kafka-paragraph { text-indent: 2rem; margin-bottom: 1.5rem; }
+
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; background-color: #010205; }
+        #canvas-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 21; pointer-events: none; }
+        .pointer-events-auto { pointer-events: auto; }
+
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: rgba(239, 68, 68, 0.9); color: white; padding: 12px 24px;
+            border-radius: 30px; font-weight: 500; z-index: 100;
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+
+        @keyframes pulse-ring { 0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(236, 72, 153, 0); } 100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); } }
+        .music-playing { animation: pulse-ring 2s infinite; }
+    </style>
+</head>
+<body class="text-white antialiased selection:bg-pink-500 selection:text-white">
+
+    <script type="text/javascript">
+       (function(){
+          // BURAYA ÖZ PUBLIC KEY-İNİ YAZMALISAN
+          emailjs.init("MJ9355wIzal1254Xy"); 
+       })();
+    </script>
+
+    <audio id="bg-music" loop><source src="music.mp3" type="audio/mpeg"></audio>
+
+    <button onclick="toggleMusic()" id="music-btn" class="fixed bottom-6 right-6 w-14 h-14 glass-panel rounded-full flex items-center justify-center z-50 hover:bg-white/20 transition-all shadow-lg shadow-pink-500/20 group">
+        <i id="music-icon" class="ph ph-music-notes-slash text-2xl text-pink-400 group-hover:text-pink-300 transition-colors"></i>
+    </button>
+
+    <div id="toast">Zəhmət olmasa, əvvəlcə ürəyindən keçənləri yaz.</div>
+
+    <div class="bg-lights" id="main-bg">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <section id="home-view" class="view-section justify-center items-center p-4 sm:p-8">
+        <div class="glass-panel rounded-3xl w-full max-w-sm p-8 sm:p-10 flex flex-col gap-6 relative overflow-hidden animate-float-card">
+            <div class="absolute -top-20 -right-20 w-40 h-40 bg-pink-300/20 blur-3xl rounded-full pointer-events-none"></div>
+            <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-400/20 blur-3xl rounded-full pointer-events-none"></div>
+
+            <div class="text-center space-y-2 mt-2">
+                <h1 class="text-4xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-br from-white via-pink-200 to-purple-400 drop-shadow-lg" style="font-family: 'Playfair Display', serif;">Əsmərimə</h1>
+                <p class="text-white/80 text-sm leading-relaxed font-light mt-2">Səninlə yaşadığım hər günə və hələ yazacağımız bütün sabahlara...</p>
+            </div>
+
+            <div class="space-y-3 mt-4">
+                <label class="text-xs uppercase tracking-widest font-semibold text-pink-300/80 pl-1">Əsmərim, ürəyindən keçənləri mənə yaz...</label>
+                <textarea id="love-message" rows="3" class="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-white placeholder-white/30 focus:outline-none focus:border-pink-500/50 focus:ring-1 focus:ring-pink-500/50 transition-all resize-none shadow-inner text-sm" placeholder="Ürəyindən keçənləri yaz..."></textarea>
+                <button onclick="sendEmail()" class="w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-400 hover:to-purple-400 shadow-lg shadow-pink-500/40 transition-all py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 text-white transform hover:scale-[1.02]">
+                    <i class="ph ph-paper-plane-tilt text-xl"></i> Göndər
+                </button>
+            </div>
+
+            <div class="h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent my-2"></div>
+
+            <div class="flex flex-col gap-3">
+                <button onclick="showView('reasons-view')" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-3.5 rounded-2xl font-medium flex items-center justify-between px-6 transition-all group backdrop-blur-sm">
+                    <span class="text-white/90 group-hover:text-white">100 Səbəb</span>
+                    <i class="ph ph-list-heart text-pink-400/70 group-hover:text-pink-400 group-hover:translate-x-1 transition-all text-lg"></i>
+                </button>
+                <button onclick="showWarningModal()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-3.5 rounded-2xl font-medium flex items-center justify-between px-6 transition-all group backdrop-blur-sm">
+                    <span class="text-white/90 group-hover:text-white">Sənə olan Sevgim</span>
+                    <i class="ph ph-envelope-open text-pink-400/70 group-hover:text-pink-400 group-hover:-translate-y-1 transition-all text-lg"></i>
+                </button>
+                <button onclick="showView('canvas-view')" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-3.5 rounded-2xl font-medium flex items-center justify-between px-6 transition-all group backdrop-blur-sm">
+                    <span class="text-white/90 group-hover:text-white">Kosmosdakı Sirr</span>
+                    <i class="ph ph-planet text-pink-400/70 group-hover:text-pink-400 group-hover:rotate-45 transition-all text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section id="reasons-view" class="view-section view-hidden pt-16 pb-8 px-4 sm:px-6">
+        <button onclick="showView('home-view')" class="absolute top-6 left-4 sm:top-12 sm:left-6 w-12 h-12 glass-panel rounded-full flex items-center justify-center hover:bg-white/20 transition-all z-50 shadow-lg">
+            <i class="ph ph-caret-left text-2xl"></i>
+        </button>
+        <div class="glass-panel rounded-3xl w-full max-w-md mx-auto h-full flex flex-col overflow-hidden relative mt-8 sm:mt-10">
+            <div class="p-6 sm:p-8 text-center border-b border-white/10 shrink-0 bg-black/20">
+                <h2 class="text-2xl font-bold tracking-wide" style="font-family: 'Playfair Display', serif;">100 Səbəb</h2>
+                <p class="text-sm text-pink-200/70 mt-2 kafka-text italic">Səni sevməyimin heç bir rəqəmə sığmayan yüz izi...</p>
+            </div>
+            <div class="p-6 sm:p-8 overflow-y-auto custom-scroll flex-grow space-y-6 text-base leading-relaxed text-white/90" id="reasons-list"></div>
+        </div>
+    </section>
+
+    <section id="kafka-view" class="view-section view-hidden pt-16 pb-8 px-4 sm:px-6">
+        <button onclick="showView('home-view')" class="absolute top-6 left-4 sm:top-12 sm:left-6 w-12 h-12 glass-panel rounded-full flex items-center justify-center hover:bg-white/20 transition-all z-50 shadow-lg">
+            <i class="ph ph-caret-left text-2xl"></i>
+        </button>
+        <div class="glass-panel rounded-3xl w-full max-w-2xl mx-auto h-full flex flex-col overflow-hidden relative mt-8 sm:mt-10">
+            <div class="p-6 sm:p-8 text-center border-b border-white/10 shrink-0 bg-black/20">
+                <h2 class="text-2xl font-bold tracking-wide" style="font-family: 'Playfair Display', serif;">Sənə olan Sevgim</h2>
+                <p class="text-sm text-pink-200/70 mt-2 italic">19 oktyabrdan bu günə — yalnız sənə yazılmış ürək məktubu.</p>
+            </div>
+            <div class="p-6 sm:p-10 overflow-y-auto custom-scroll flex-grow kafka-text text-lg text-white/80">
+                <p class="kafka-paragraph text-xl font-semibold text-white/90 mb-6">Əsmərim, balam, yavrum — ürəyimin sözə sığmayan ən doğma adı,</p>
+                <p class="kafka-paragraph">Sənə bu məktubu yazmağa başlayanda qarşımdakı ekranın səssizliyini görürəm və düşünürəm ki, insanın içində bu qədər səs ola-ola bir cümləni yazmaq niyə bu qədər çətindir? Mən bəzən bütün dünyanın səsini eşidirəm, amma sənə «səni sevirəm» demək istəyəndə sözlərin necə balacalaşdığını görürəm. Sanki ürəyimdə böyük bir səma var, mən isə o səmanın bütün ulduzlarını bir ovuc hərfə yerləşdirməyə çalışıram. Hər dəfə bir cümlə qururam, sonra dönüb ona baxıram: yox, Əsmərim, bu deyil, bu da sənin haqqında hiss etdiyim şeyin yalnız kölgəsidir. Mən səni bir cümlə ilə izah edə bilsəydim, bəlkə də sənə olan sevgim bu qədər canlı, bu qədər dərin, bu qədər mənə aid olmazdı. Mənim sevgim gözəl sözlərin içində gizlənmir; gözəl sözlər onun arxasınca çatmağa çalışan yorğun yolçulardır. 19 oktyabrı düşünürəm. Təqvimdə bir gün idi, sənə qədər başqaları kimi. Sonra həyatımda sənin adın yarandı. Mən o gün gələcəkdə nələr hiss edəcəyimi, adının məndə hansı sükutları dəyişəcəyini, bir səhər mesajının necə bütöv bir günü işıqlandıra biləcəyini bilmirdim. Hər şeyi əvvəldən bilsəydim, bəlkə yenə də eyni həyəcana düşərdim. Çünki insan bəzi xoşbəxtliklərə hazır olmur; onlar gələndə ürək özünə yeni bir yer açır. Sən o yeri mənim içimdə tapdın. İndi fikirləşirəm ki, səninlə tanışlıq təkcə bir insanı tanımaq deyildi. Elə bil mən özümün hələ tanımadığım bir tərəfimi sənin sayəndə kəşf etdim: birinin sevincini öz sevincim kimi düşünən, onun gününü soruşmağı səbirsizliklə gözləyən, onun səsini xatırlayanda sanki dünyanın içindən bir ev tapmış kimi sakitləşən tərəfimi. Əsmərim, mən sənə böyük bir sevginin başladığı günü deyə bilirəm, amma bu sevginin bütün mənasını hansı sözlə çatdıracağımı hələ bilmirəm. Yalnız bunu bilirəm: o gündən sonra həyatımdakı ən doğma suallardan biri «Əsmər indi necədir?» oldu. Və mən bu sualın içində qəribə bir səadət tapdım.</p>
+                <p class="kafka-paragraph">Kafka ilə Milenanın məktublarını düşünəndə məni ən çox sarsıdan şey uzaqlığın özü deyil, iki insanın bir-birinə çatmaq üçün dili necə son həddinə qədər aparmasıdır. Bəzən bir məktub sadəcə kağızdan ibarət olmur; insanın getmək istədiyi, amma hələ gedə bilmədiyi bir yerə çevrilir. Mən də sənə yazanda bəzən elə hiss edirəm ki, hər söz məndən çıxıb sənin yanına çatmaq üçün yol gedir. Amma səninlə bizim aramızdakı həqiqət təkcə həsrətdən ibarət deyil. Mən artıq səni görmüşəm. Səninlə eyni məkanda olmuşam. Mənim sevgim heç vaxt gerçəkləşməyəcək bir xəyala yazılmır; yaşanmış günləri, qarşılıqlı seçilmiş yaxınlığı, gerçək xatirələri olan Əsmərə yazılır. Bu, bütün sözlərdən daha qiymətlidir. <i class="text-pink-300/90">«Əsas olan gözə görünmür»</i> — «Balaca Şahzadə»nin bu fikri mənə səni sevməyin bir tərəfini xatırladır. Çünki hər kəs sənin gözlərini görə bilər, amma o gözləri düşünəndə içimdə yaranan həmin incəliyi, bir sözündən sonra uzun müddət gülümsəməyimi, sənin yaxşı olub-olmadığını düşünərkən duyduğum qayğını yalnız mən öz içimdə yaşayıram. Sənə «qara gözlüm» deməyim sadəcə gözlərinin rənginə heyran olmaq deyil. O sözdə sənə baxanda ürəyimdə yaranan bütün təəccüb, bütün yumşaqlıq, bütün «yaxşı ki»lərim yaşayır. Mən sənin yalnız gülən, hər şeyə cavab tapan, hər zaman güclü tərəfini sevmirəm. Sən yorulanda, fikirlərin qarışanda, hər şeyi izah etmək istəməyəndə də sən yenə mənim sevdiyim Əsmərsən. Mənim sevgim səndən mükəmməl bir obraz düzəltmək üçün deyil, sənin həqiqi insan olaraq bütün rənglərini qəbul etmək üçündür. Sənə sevgi adı ilə qəfəs qurmaq istəmirəm. Mən istəyirəm ki, öz arzuların, öz fikirlərin, öz sərhədlərin və öz səsinlə mənim yanımda rahat olasan. Mənim üçün ən böyük romantika sənin səsini boğacaq qədər gur danışmaq deyil; sən alçaq səslə bir şey deyəndə onu belə ürəklə eşitməkdir. Sevginin dərinliyi bəzən birinin göz yaşına səbəb olmaqda deyil, ağlamaq istəyəndə onun özünü tək hiss etməyəcəyi bir yer ola bilməkdədir. Mən o yer olmağı öyrənmək istəyirəm, balam.</p>
+                <p class="kafka-paragraph">29 oktyabr... Səni ilk dəfə üz-üzə gördüyümüz gün. Bəzi tarixlər sadəcə keçmir, insanın yaddaşında yaşayır. Mən o günü düşünəndə təsəvvürlə gerçəkliyin arasındakı məsafənin birdən necə dəyişdiyini xatırlayıram. Ondan əvvəl səni sözlərdə, söhbətlərdə, düşüncələrimdə tanıyırdım; o gün isə bizim hekayəmizin gerçək dünyada da yeri olduğunu bildim. İlk görüşümüzdə çəkilən şəkillər sonradan itdi. Bunu düşündükcə həm təəssüflənirəm, həm də qəribə bir həqiqəti anlayıram: şəkil itə bilər, amma şəkli qiymətli edən gün eləcə yoxa çıxmır. Telefonun yaddaşı silə bilər; ürəyin bəzi tarixləri başqa cür saxlayır. Bizim 29 oktyabrımız mənim içimdə elə qalıb. Onu sənə danışanda nəyisə olduğundan daha gözəl göstərməyə ehtiyac duymuram; çünki onun gözəlliyi baş verməsindədir. Sonra 6 noyabr gəldi. Əsmərim, o tarix bizim üçün bir sözün mənasını dəyişdi: «biz». Həmin gün rəsmi olaraq sevgili olduq. Mən bu ifadəni bəzən ürəyimdə təkrar edirəm — biz. Nə qəribədir, cəmi üç hərf insanın gələcəyi haqqında düşünmə tərzini dəyişə bilir. Mən yenə mənəm, sən yenə sənsən, amma hər ikimiz bir-birimizin həyatında könüllü, həqiqi bir yer tuturuq. Elə həmin gün sənə HALLEY-ni təqdim etdim. Orada ulduzlar vardı, səma vardı, bəlkə yüzlərlə işıq nöqtəsi vardı; amma hamısının arxasında bircə niyyət dayanırdı: mənim sənə sözlə deməkdə çətinlik çəkdiyim sevgimi sən görə biləsən. Halley kometası təxminən yetmiş beş-yetmiş altı ildən bir göyə qayıdır. İnsan bəzi gözəllikləri görmək üçün bütöv bir ömür qədər gözləyirmiş kimi olur. Mən sənə «mənim Halleyim» deyəndə sənin belə nadir olduğunu demək istəyirəm. Amma bir fərq var, yavrum: mən səninlə bir dəfə rastlaşmağı yox, mümkün olduğu qədər çox adi sabahı bölüşməyi arzulayıram. Göy üzündə bir dəfə görünən kometaya heyran olmaq gözəldir; hər gün seçdiyin insanın gülüşündə yenidən heyrət tapmaq isə mənim üçün daha böyük möcüzədir. O saytı bəyəndiyini bilmək məni sevindirdi. Çünki orada göstərmək istədiyim şey texniki bir möcüzə yox, sadə bir həqiqət idi: sənə ayrılan vaxtın, diqqətin, zəhmətin hər saniyəsi mənə dəyərli gəlir. 6 noyabrın ən böyük hədiyyəsi saytın özü deyildi. O günün ən böyük hədiyyəsi səninlə sevgili olmaq idi.</p>
+                <p class="kafka-paragraph">Və 11 noyabr... Bunu yazanda içimdə sözlərin yerini sükut almaq istəyir. Çünki bəzi xatirələr var, insan onları bəzəsə, sanki zərifliyindən nəsə itirər. O gün yenidən görüşdük. O gün ilk dəfə dodaq-dodağa öpüşdük. O öpüş sənin də, mənim də həyatımızda bir ilk idi. Mən bunu dünyaya car çəkmək üçün yox, səninlə aramızda çox qiymətli, çox incə bir xatirə kimi saxlamaq üçün yazıram. Mənim üçün onun əhəmiyyəti təkcə ilk olmasında deyil; məhz səninlə, məhz bizim aramızda baş verməsindədir. Başqa bir günün, başqa bir insanın deyil, bizim 11 noyabrımızın xatirəsidir. Bəzən elə bilirəm ürək bütün həyatı boyu bir neçə anı xüsusi bir yerə qoyur və sonra illər keçdikcə onları səssizcə qoruyur. Mən o günü həmin yerə qoymuşam. Sənə sevgimi izah etməyə çalışanda məndə həm qəribə bir həyəcan, həm də çox dərin bir ehtiram yaranır. Çünki yaxınlıq yalnız insanın istəyi ilə deyil, iki insanın bir-birinə verdiyi etibar və qarşılıqlı hiss ilə gözəlləşir. Mənim üçün öpüşümüzün ən incə tərəfi budur. Heç bir romantik cümlə sənin rahatlığından, sənin özünü təhlükəsiz hiss etməyindən böyük deyil. Mən səni sevərkən bunu unutmamaq istəyirəm. Balam, mən bəzən o gün haqqında düşünəndə zamanın niyə həmişə eyni sürətlə getdiyinə təəccüblənirəm. Bizim içimizdə bəzi saniyələr o qədər böyüyür ki, təqvim onları bir günün içinə necə yerləşdirir, anlamıram. Amma o an nə qədər qiymətli olsa da, mən səni yalnız həmin xatirəyə görə sevmirəm. İlk öpüş unudulmazdır, bəli; lakin sevgimiz bir öpüşdən əvvəl də vardı. 6 noyabrda bir-birimizi seçmişdik; 11 noyabr həmin seçimin içində bir ulduz kimi yandı. Mənim üçün aramızdakı ən böyük şey nə bir tarixdir, nə bir öpüş, nə də böyük sözlər. Ən böyük şey sənin hələ sabah da özün olmağın və mənim səni o sabahda da könüllü seçmək istəməyimdir. İnsan bəzi anları ömrü boyu unutmaq istəmir. Mən bizim ilk öpüşümüzü də unudulmaz olduğu üçün deyil, içimdə sənə aid bir doğmalığı daha da dərinləşdirdiyi üçün belə qorumaq istəyirəm.</p>
+                <p class="kafka-paragraph">Sən çox vaxt məndən əvvəl oyanırsan. Səndən gələn «Sabahın xeyir» mesajları var. Bax, Əsmərim, mən bəzən ən böyük sevginin məhz bu qədər kiçik görünən şeylərdə yaşadığına inanıram. Bir insanın günə başlayanda səni xatırlaması nə qədər səssiz, nə qədər sadə, nə qədər böyük bir möcüzədir. Sənin mesajını görəndə bəzən bütün poetik cümlələr yersiz görünür. Çünki mənə lazım olan həmin an üçün uzun bir roman deyil, səndən gəlmiş bir neçə doğma sözdür. Sonra özümə gələcək barədə bir sual verirəm: görəsən, bir gün səhər oyananda səndən mesaj gözləmək əvəzinə səni yanımda görə biləcəyəmmi? Bu, indi yaşanmış xatirə deyil, ürəyimdə ehtiyatla böyütdüyüm bir arzudur. Mən gələcəyimizi hökm kimi yazmaq istəmirəm; onu birlikdə seçəcəyimiz günlərə açıq saxlamaq istəyirəm. Hər şeyin həmişə asan olmayacağını bilirəm. Bəzən yorula bilərik, fərqli düşünə bilərik, söz tapmaya bilərik. Mənim böyük vədim heç vaxt səhv etməmək ola bilməz. Amma səndən üzr istəmək lazım gələndə qürurumun arxasında gizlənməmək, bir şey anlamayanda təxmin etmək əvəzinə səndən soruşmaq, sənin duyğularına hörmət etmək, qayğı göstərmək üçün yalnız xüsusi günləri gözləməmək istəyirəm. Rilkenin sevgi haqqında yazdığı o məşhur fikri tez-tez düşünürəm: iki insanın bir-birinə yaxınlığı, hər birinin öz iç dünyasını da qoruyub yaşada bilməsidir. Mən bunu səninlə öyrənmək istəyirəm. Sən yalnız mənim sevdiyim insan deyil, öz düşüncələri, istəkləri, qorxuları, cəsarəti və arzuları olan bütöv bir dünyasan. Mən səndə bu dünyanın yalnız mənə uyğun tərəflərini seçmək istəmirəm. Mən səni sənin kimi tanımaq istəyirəm. Bəzən suallar veririk, zarafat edirik, bir-birimizin məntiqini sınayırıq. Mən sənin cavablarına heyran oluram; bəzən məni elə incə şəkildə təəccübləndirirsən ki, səni daha çox tanımaq istəyim artır. Sənin ağlını sevirəm. Sənin gülüşünü sevirəm. Səsini, həssaslığını, nəyisə özünəxas tərzdə izah etməyini, bəzən bircə sözlə günümü dəyişə bilməyini sevirəm. Amma bütün bunları saysam da, yenə bir şey yarımçıq qalar. Çünki mən səni gözəl xüsusiyyətlərinin siyahısı kimi yox, heç kimin təkrarı olmayan bir insan kimi sevirəm. Əsmər olduğun üçün. Məhz sən olduğun üçün. Balam, sənə deyəcəyim son sözün hansını seçəcəyimi bilmirəm; çünki bu məktubun sonu sevgimin sonu deyil. Mən bəzən istəyirəm ki, insanın içindəki hissləri başqasına olduğu kimi göstərə bilən bir yol olsun. Sən bir anlıq ürəyimin içindən dünyaya baxasan; onda sənin adın çəkiləndə nəyin dəyişdiyini, sənin üçün necə həssas olduğumu, sənin xoşbəxtliyini düşünəndə niyə özümü bu qədər yaxın hiss etdiyimi sözsüz anlayasan. Ancaq belə bir yol yoxdur. Ona görə yazıram. Yenə yazıram. Elə bil hər cümlə o böyük məsafəni bir az qısaldır: hiss etdiyimlə sənə çatdıra bildiyim arasındakı məsafəni. Kainatın işıq sürəti adlı bir həddi var; mən əvvəllər düşünürdüm ki, o hədd olmasaydı, mənim sənə olan sevgim olardı. İndi isə fikirləşirəm ki, sevgini ölçmək üçün kainatın ən böyük rəqəmlərini gətirməyə də ehtiyac yoxdur. Bəzən onun ölçüsü sənin kədərləndiyini görəndə diqqətlə dinləməyə hazır olmağımdır. Bəzən sənə gələn bir səhərin xeyir mesajına bütün ürəyimlə sevinməyimdir. Bəzən 29 oktyabrın şəkilləri itəndə o günün mənasının itmədiyini bilməyimdir. Bəzən 6 noyabrı ürəyimdə bizim günümüz kimi qorumağımdır. Bəzən 11 noyabrın xatirəsi qarşısında ən böyük cümləmin belə sakitləşməyidir. Bəzən sənin xoşbəxt olmağın üçün istəyəcəyim ən gözəl şeyin məndən asılı olmayan arzularının da gerçəkləşməsi olmasıdır. Sevgim budur: səni öz dünyama sığdırmaq yox, sənin öz dünyanda da işıqlı günlərinin çoxalmasını ürəkdən arzulamaq. Mən sənə «ömrüm» deyirəm, amma səndən ömrünü mənə verməyini istəmirəm; səninlə ömrümüzün mümkün olan günlərini paylaşmaq istəyirəm. «Həyatım» deyirəm, amma sənin həyatının mənim içimdə əriyib yox olmasını deyil, öz rəngləri ilə parlamasını istəyirəm. «Yavrum» deyirəm, çünki səninlə danışanda içimdə çox incə bir qayğı oyanır. «Əsmərim» deyirəm, çünki bu ad mənim üçün bir ünvan, bir nəğmə, bir ev kimi doğmadır. Əgər bir gün illər keçsə və biz bu məktubu yenidən oxusaq, istəyirəm burada yalnız gənc bir ürəyin coşğusunu yox, o ürəyin sənin yanında öyrənmək istədiyi sədaqəti, hörməti, diqqəti də görək. İstəyirəm o gün də sənə baxıb bir şeyi dəyişmədən deyə bilim: yaxşı ki, 19 oktyabr gəldi; yaxşı ki, 29 oktyabrı yaşadıq; yaxşı ki, 6 noyabr bizim günümüz oldu; yaxşı ki, 11 noyabrın o incə xatirəsi var. Ən çox da yaxşı ki, sən varsan. Mənim Halleyim, mənim qara gözlüm, balım, balam, Əsmərim... Əgər bütün ulduzların adı bir gün unudulsa, mənim ürəyim yenə sənin adını tanıyacaq. Əgər bütün romanların son səhifəsi bağlansa, mən yenə səninlə yeni bir cümləyə başlamaq istəyəcəyəm. Və hər dəfə, heç bir məcburiyyət olmadan, heç bir başqa səbəbə ehtiyac duymadan, könüllü və bütün qəlbimlə eyni sözləri deyəcəyəm: mən səni sevirəm, Əsmər. Sadəcə gözəl günlərdə yox. Sadəcə böyük hadisələr baş verəndə yox. Sən özün olduğun üçün. Mən səni, məhz səni sevirəm.</p>
+                <p class="text-right mt-10 italic text-pink-300/80">Hər sabah səni yenidən seçən ürəyimlə — səni sevən mən.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="canvas-view" class="view-section view-hidden">
+        <div id="canvas-container"></div>
+        <div id="canvas-ui">
+            <button onclick="showView('home-view')" class="absolute top-6 left-4 sm:top-12 sm:left-6 w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center hover:bg-white/30 transition-all pointer-events-auto z-50 shadow-lg">
+                <i class="ph ph-caret-left text-2xl text-white"></i>
+            </button>
+            <div class="absolute bottom-12 sm:bottom-16 left-0 w-full text-center pointer-events-none px-4 z-50">
+                <p class="text-white/90 text-sm sm:text-base tracking-widest animate-pulse font-medium bg-black/40 backdrop-blur-md inline-block px-8 py-4 rounded-full border border-white/10 shadow-2xl">
+                    Dairəni sağa-sola fırlat... Sadəcə düzgün bucağı tapdıqda hər şey aydın olacaq.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <div id="warning-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel rounded-3xl max-w-sm w-full mx-4 p-8 text-center transform scale-95 transition-transform duration-300" id="warning-content">
+            <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/30 shadow-lg shadow-red-500/20">
+                <i class="ph ph-warning-circle text-3xl text-red-400 animate-pulse"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-2" style="font-family: 'Playfair Display', serif;">Xəbərdarlıq!</h3>
+            <p class="text-white/80 mb-8 font-medium">Əsmərim, burada sənə deyə bilmədiyim qədər çox sevgi var.<br>Bu sözlərin hamısı yalnız sənindir.</p>
+            <div class="flex gap-3">
+                <button onclick="closeWarningModal()" class="flex-1 py-3.5 rounded-xl border border-white/20 text-white/80 hover:bg-white/10 hover:text-white transition-all font-medium">Geri</button>
+                <button onclick="proceedToKafka()" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-400 hover:to-pink-500 text-white shadow-lg shadow-red-500/30 transition-all font-medium">Davam et</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isPlaying = false;
+        const bgMusic = document.getElementById('bg-music');
+        const musicIcon = document.getElementById('music-icon');
+        const musicBtn = document.getElementById('music-btn');
+
+        function toggleMusic() {
+            if (isPlaying) {
+                bgMusic.pause();
+                musicIcon.classList.replace('ph-music-notes', 'ph-music-notes-slash');
+                musicBtn.classList.remove('music-playing');
+            } else {
+                bgMusic.play().catch(e => showToast("Musiqi faylı (cant_get_you_out_of_my_head.mp3) tapılmadı."));
+                musicIcon.classList.replace('ph-music-notes-slash', 'ph-music-notes');
+                musicBtn.classList.add('music-playing');
+            }
+            isPlaying = !isPlaying;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function showView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('view-hidden'));
+            document.getElementById(viewId).classList.remove('view-hidden');
+            if(viewId === 'canvas-view') {
+                document.getElementById('main-bg').style.opacity = '0';
+                init3D();
+            } else {
+                document.getElementById('main-bg').style.opacity = '1';
+            }
+        }
+
+        function showWarningModal() {
+            const modal = document.getElementById('warning-modal');
+            const content = document.getElementById('warning-content');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+        }
+
+        function closeWarningModal() {
+            const modal = document.getElementById('warning-modal');
+            const content = document.getElementById('warning-content');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.add('scale-95');
+        }
+
+        function proceedToKafka() {
+            closeWarningModal();
+            setTimeout(() => showView('kafka-view'), 300);
+        }
+
+        // EmailJS funksiyası yeniləndi
+        function sendEmail() {
+            const message = document.getElementById('love-message').value;
+            if(!message.trim()) { 
+                showToast("Zəhmət olmasa, əvvəlcə ürəyindən keçənləri yaz..."); 
+                return; 
+            }
+            
+            const templateParams = { message: message };
+
+            // service_s31oywk və template_ttn58pi sizin ID-lərdir
+            emailjs.send('service_jtdxoo6', 'template_kli0se6', templateParams)
+                .then(function(response) {
+                    showToast("Mesajın uğurla çatdı!");
+                    document.getElementById('love-message').value = ""; 
+                }, function(error) {
+                    showToast("Xəta baş verdi, yenidən cəhd et.");
+                    console.log("Xəta:", error);
+                });
+        }
+
+        const reasons = [
+            "Çünki 19 oktyabr mənim üçün sadəcə təqvimdə bir gün deyil; həyatımın sənin adınla başqa cür səslənməyə başladığı tarixdir.",
+            "Çünki səni tanımağa başlamazdan əvvəl günlər bir-birinə bənzəyirdi, indi isə hər günün içində səndən gələn bir işıq axtarıram.",
+            "Çünki adın ilk dəfə həyatımda yer alanda bunun nə qədər böyüyəcəyini bilmirdim, amma bu gün o adı ürəyimdə ən əziz yerdə saxlayıram.",
+            "Çünki sən mənə insanın birini tanıdıqca ondan doymadığını, əksinə, daha çox tanımaq istədiyini öyrətdin.",
+            "Çünki bəzən bir söhbət bütün günün yorğunluğunu unudur; mənim üçün o söhbətin içində sənin səsin var.",
+            "Çünki səninlə danışanda özümü olduğum kimi göstərə bilirəm və bu rahatlıq sevgimin ən sakit, ən dərin tərəfidir.",
+            "Çünki mesajında adımı görməyim belə adi bir anı ürəyimdə kiçik bir bayrama çevirə bilir.",
+            "Çünki səninlə başlayan bu hekayənin ən gözəl tərəfi hazır cavablarının yox, hələ birlikdə kəşf edəcəyimiz səhifələrinin olmasıdır.",
+            "Çünki sən mənim xəyalımda uydurduğum bir insan deyilsən; bütün düşüncələrin, hisslərin və qərarlarınla gerçək Əsmərsən və mən məhz səni sevirəm.",
+            "Çünki dünyada milyardlarla insan varkən, öz ürəyimdə bu qədər doğma səslənən bir adın olması mənə hələ də möcüzə gəlir.",
+            "Çünki qara gözlərini düşünəndə hər ulduzun niyə parıldamaq istədiyini anlayırmışam kimi oluram.",
+            "Çünki gözəlliyin yalnız üzündə deyil; kiməsə baxışında, bir fikri dinləməyində və susanda belə özün olaraq qalmağındadır.",
+            "Çünki gülüşün mənim yaddaşımda səsdən daha artıq bir şeydir; qaranlıq bir günün işıqlana bilməsi ehtimalıdır.",
+            "Çünki səsini eşitmək üçün bəzən heç bir mövzuya ehtiyac duymuram; sadəcə günümün içində sənə aid bir an olsun istəyirəm.",
+            "Çünki adını pıçıldamaq belə məni başqa bir insana çevirmir, əksinə, içimdəki ən səmimi insanı üzə çıxarır.",
+            "Çünki sənin gülümsəməyin haqqında düşündüyümdə üzümün də istər-istəməz dəyişdiyini hiss edirəm.",
+            "Çünki sənə baxmaq mənim üçün bir şəkilə baxmaq deyil; sonunu bilmədiyim, amma hər sətrini sevdiyim bir kitab oxumaqdır.",
+            "Çünki gözlərin mənə uzaq qalaktikaları xatırlatsa da, sən mənim üçün əlçatmaz deyil, yaxınlığını qorumaq istədiyim insansan.",
+            "Çünki səndə hamının görə bildiyi gözəllikdən başqa, tanıdıqca üzə çıxan bir incəlik var.",
+            "Çünki sənin varlığın mənim sevgimi yalnız böyük cümlələrdə yox, ən kiçik təfərrüatlarda da görünən edir.",
+            "Çünki verdiyin ağıllı cavablar məni həm heyrətləndirir, həm güldürür, həm də sənə bir az daha vurğun edir.",
+            "Çünki aramızdakı sual oyunlarında cavabından daha çox o cavaba necə gəldiyini sevirəm.",
+            "Çünki səninlə çətin mövzuları da danışmaq istəyirəm; sevgini yalnız asan söhbətlərə sığışdırmaq istəmirəm.",
+            "Çünki bəzən ikimizin eyni məsələyə fərqli baxması sənə olan marağımı azaltmır, səni daha yaxşı anlamaq istəyimi artırır.",
+            "Çünki məni güldürməyi bacarırsan, bəzən də heç gözləmədiyim anda düşünməyə vadar edirsən.",
+            "Çünki səninlə keçən söhbətlərdə saatı unutmaq asandır, amma dediyin kiçik bir sözü unutmamaq mümkündür.",
+            "Çünki sənin fikrini soruşmaq mənim üçün formal bir nəzakət deyil; sənin dünyanı necə gördüyünü həqiqətən bilmək istəyirəm.",
+            "Çünki zarafatlarımızın arxasında bir-birimizə getdikcə daha çox açılan iki insanın doğmalığı var.",
+            "Çünki qısqanclıqla qurduğumuz məzəli sualların belə mənə sənin ağlını və özünəməxsus məntiqini bir daha göstərir.",
+            "Çünki səninlə susmaq da, danışmaq da mənə münasibətin yalnız sözlərdən ibarət olmadığını xatırladır.",
+            "Çünki çox vaxt məndən tez oyanıb yazdığın «Sabahın xeyir» günün ilk işığı kimi ürəyimə toxunur.",
+            "Çünki yuxudan oyananda səndən bir xəbər görmək səhərin rəngini dəyişir.",
+            "Çünki bir gün səni səhər mesajında yox, yanımda görmək arzusunu elə incəliklə daşıyıram ki, onu ən gözəl gələcəklərimdən biri sayıram.",
+            "Çünki günün necə keçdiyini səndən soruşmaq mənim üçün vərdişdən çox qayğıdır.",
+            "Çünki yorğun günlərdə də sənin haqqında düşünmək məni yalnız həyəcanlandırmır, sakitləşdirir də.",
+            "Çünki sənə «balam» deməyimin içində bir sözün daşıya biləcəyindən daha çox şəfqət var.",
+            "Çünki «yavrum» deyəndə səninlə aramızdakı o özəl, yalnız bizə aid yaxınlığı hiss edirəm.",
+            "Çünki «Əsmərim» demək mənim üçün sahib olmaq yox, sənə duyduğum doğmalığı sevgi ilə dilə gətirməkdir.",
+            "Çünki «həyatım» sözünü sənə deyəndə onun necə böyük bir söz olduğunu bir daha anlayıram.",
+            "Çünki hər adi günün içinə səninlə bağlı kiçik bir xatirə yerləşə bilər və bu mənə gələcəyi daha çox sevdirdir.",
+            "Çünki 29 oktyabr bizə yalnız yazışmalardan ibarət olmayan, eyni dünyada üz-üzə yaşadığımız bir xatirə verdi.",
+            "Çünki ilk görüşümüzü düşünəndə o günün tarixindən daha çox, artıq həqiqətən görüşmüş olmağımızın sevincini xatırlayıram.",
+            "Çünki səninlə eyni məkanda olmaq xəyal etdiyim bir şeyi gerçəyə çevirdi və bu gerçəklik bütün romantik təsəvvürlərdən qiymətli idi.",
+            "Çünki ilk görüşümüzdən qalan şəkilləri itirsəm də, o günün mənasını yaddaşımdan heç kim silə bilməz.",
+            "Çünki bəzən ən qiymətli albom telefonun yaddaşında deyil, insanın içində olur; bizim 29 oktyabrımız da oradadır.",
+            "Çünki səninlə görüşmüş olmaq mənə uzaqlığın yalnız yollarla ölçülmədiyini, yaxınlığın isə etibarla qurulduğunu anlatdı.",
+            "Çünki ilk görüşümüzdən sonra sənin mənim üçün sadəcə bir ekranın arxasındakı insan olmadığını daha dərindən hiss etdim.",
+            "Çünki o görüşü təkrar yaşamaq arzusundan da gözəl bir arzum var: səninlə yeni, gerçək xatirələr yaratmaq.",
+            "Çünki 29 oktyabrı düşünəndə keçmişə qayıtmaq istəmirəm; həmin günlə başlayan yaxınlığın hara qədər gözəlləşə biləcəyini düşünürəm.",
+            "Çünki bizim üçün böyük olan şeylərin bəzən çox sadə bir tarixdən başladığını mənə sən göstərdin.",
+            "Çünki 6 noyabr mənim ürəyimdə bir seçimə ad verdi: biz o gün rəsmi olaraq sevgili olduq.",
+            "Çünki səninlə «biz» olmaq mənim üçün iki ayrı insanın özünü itirməsi yox, bir-birinə könüllü yer açmasıdır.",
+            "Çünki 6 noyabrda sənə təqdim etdiyim HALLEY saytının içində əslində yüzlərlə ulduz yox, bir insana çatdırmağa çalışdığım sevgi vardı.",
+            "Çünki Əsmər, o saytı bəyənməyin mənə gözəl bir şey hazırlamağın deyil, ürəyimdən gələn bir şeyi sənə çatdıra bilməyin sevincini yaşatdı.",
+            "Çünki o kosmik hədiyyənin hər ulduzu sənə demək istədiyim, amma tək bir cümləyə sığmayan hisslərin kiçik bir işarəsi idi.",
+            "Çünki sevgili olduğumuz günü xatırlayanda gələcək barədə düşünməkdən qorxmuram; onu səninlə qayğıyla qurmaq istəyirəm.",
+            "Çünki sənin «sevgilim» olmağın məndə yalnız sevinc yox, səni daha diqqətlə dinləmək məsuliyyəti də oyadır.",
+            "Çünki münasibətimizin başlanğıcını dəqiq bir tarixlə adlandıra bilmək, o günü hər il yenidən minnətdarlıqla xatırlamaq deməkdir.",
+            "Çünki sənə edilən böyük jestdən daha qiymətli olan şey, sabah da eyni səmimiyyətlə yanında olmağı seçməkdir.",
+            "Çünki 6 noyabrı yalnız bizim tariximiz edən hadisə bir sayt deyil, bir-birimizi seçməyimiz idi.",
+            "Çünki Halley kometası onilliklərlə gözlənilir, mənim sənə rast gəlməyim isə gözləmədiyim halda həyatımın ən nadir xoşbəxtliyinə çevrildi.",
+            "Çünki sənə «mənim Halleyim» deyəndə nə qədər nadir bir insanla qarşılaşdığımı özümə xatırladıram.",
+            "Çünki kainatın minlərlə işığı ola bilər, amma mənim üçün ən doğma işıq sənin adınla bağlıdır.",
+            "Çünki ulduzları seyr etmək gözəldir, amma onların haqqında sənə danışa bilmək mənə daha gözəl gəlir.",
+            "Çünki sonsuzluq haqqında düşünəndə onu ölçmək istəmirəm; sadəcə sevgimin sabah da bu günkü qədər həqiqi olmasını arzulayıram.",
+            "Çünki işıq sürəti kainatda bir sərhəddirsə, mənim sənə demək istədiklərimin sərhədi yalnız sözlərin çatdığı yerdir.",
+            "Çünki bir dəfə göyə baxıb sənin gözlərini xatırlamaq mənə ən böyük şeylə ən doğma şeyin yanaşı yaşaya bildiyini göstərir.",
+            "Çünki sənin üçün qurduğum ulduzlu dünyanın mənası ulduzlar deyildi, onların ardınca görünən sən idin.",
+            "Çünki «səni sevirəm» sözləri hər dəfə eyni səslənsə də, onları deyən ürək hər gün sənin haqqında yeni bir şey öyrənir.",
+            "Çünki ən gözəl möcüzə nadir kometanı görmək deyil, həmin möcüzəni gündəlik həyatda səni sevərək yaşamaqdır.",
+            "Çünki 11 noyabrın mənim üçün ayrı yeri var: o gün ilk dəfə dodaqlarımız bir-birinə toxundu.",
+            "Çünki o ilk öpüş həm mənim, həm də sənin həyatında bir ilk idi və bu xatirənin incəliyi mənim üçün çox qiymətlidir.",
+            "Çünki ilk öpüşümüz haqqında düşünəndə ən çox o anın qarşılıqlı və özümüzə aid olmasını sevirəm.",
+            "Çünki 11 noyabr sevgimizin başlanğıcı deyildi; 6 noyabrda başladığımız sevgililiyin içində unudulmaz bir səhifə idi.",
+            "Çünki elə anlar var ki, onları böyütmək üçün əlavə bəzəyə ehtiyac yoxdur; bizim ilk öpüşümüz mənim üçün elə andır.",
+            "Çünki o günün dəyərini dünyaya danışmaqdan çox, səninlə aramızda incə bir xatirə kimi qorumaq istəyirəm.",
+            "Çünki iki insanın bir-birinə yaxınlaşmasında ən qiymətli şey tələsməmək, bir-birinin hisslərini duymaq və o anı birlikdə seçməkdir.",
+            "Çünki 11 noyabrı xatırlayanda ürəyimdə eyni vaxtda həm həyəcan, həm minnətdarlıq yaranır.",
+            "Çünki ilk dəfə yaşadığımız bir şeyin xatirəsi mənim üçün gələcəkdə bütün yaxınlıqlarımızın daha diqqətli və sevgi dolu olmasını arzuladır.",
+            "Çünki bəzi tarixlər sənədə yazılmaz, insanın içində yaşayır; 11 noyabr mənim üçün belə tarixlərdəndir.",
+            "Çünki kədərli olduğun günlərdə də səni yalnız gülümsəməyə məcbur etmədən dinləməyi istəyirəm.",
+            "Çünki mən səni həmişə xoşbəxt görünməli olan bir obraz kimi yox, bütün duyğuları olan həqiqi insan kimi sevirəm.",
+            "Çünki qərarlarına, sərhədlərinə və fikirlərinə hörmət etmək sevgimdən ayrı bir şey deyil, elə sevginin özüdür.",
+            "Çünki sən mənim yanımda fikrini çəkinmədən deyə biləsən istəyirəm, hətta bizim fikirlərimiz üst-üstə düşməyəndə də.",
+            "Çünki sənin arzularının təkcə mənimlə bağlı olmasını istəmirəm; öz arzularının da çiçəklənməsini ürəkdən istəyirəm.",
+            "Çünki sənə qayğı göstərmək yalnız böyük sözlər demək deyil, kiçik günlərdə də diqqətli olmaqdır.",
+            "Çünki «başa düşürəm» deməzdən əvvəl səni həqiqətən dinləməyi öyrənmək istəyirəm.",
+            "Çünki səni sevmək sənin güclü günlərinə heyran olmaqla yanaşı, yorğun günlərinə də şəfqətlə yanaşmaqdır.",
+            "Çünki özünü mənim sevgimin qarşılığını ödəməyə borclu hiss etməməyin mənim üçün vacibdir.",
+            "Çünki məhəbbətimizin ən gözəl tərəfi bir-birimizi dəyişdirmək yox, bir-birimizlə daha yaxşı insanlar olmağı öyrənməkdir.",
+            "Çünki bir günün sonunda sənə danışmaq istədiyim xırda hadisələrin toplanması, mənim üçün birlikdə qurulacaq həyatın ilk sətirləridir.",
+            "Çünki gələcəkdə eyni səhəri qarşılamaq arzum var, amma indiki günlərimizin də gözəlliyini gözdən qaçırmaq istəmirəm.",
+            "Çünki səninlə daha çox görüşmək, daha çox gülmək, daha çox söhbət etmək üçün qarşıda nə qədər imkanımız olduğunu düşünmək məni sevindirir.",
+            "Çünki bizi birləşdirən yalnız xüsusi günlər deyil; arada bir-birimizə verdiyimiz adi diqqətdir.",
+            "Çünki illər sonra da sənə bugünkü həyəcanla yox, bəlkə daha sakit, amma daha möhkəm sevgi ilə baxmağı arzulayıram.",
+            "Çünki səninlə səhv edəndə üzr istəməyi, anlamayanda soruşmağı və incidəndə düzəltməyi bacaran bir sevgi yaşamaq istəyirəm.",
+            "Çünki özüm üçün arzuladığım bütün gözəl sabahların içində sənin də xoşbəxt olmağın arzusu var.",
+            "Çünki 19 oktyabrın təsadüfü, 29 oktyabrın gerçəkliyi, 6 noyabrın qərarı və 11 noyabrın incəliyi bir yerdə bizim hekayəmizdir.",
+            "Çünki bəzən bütöv bir romanın son cümləsini bilmək lazım deyil; mənim üçün hər gün səni yenidən seçmək kifayətdir.",
+            "Çünki yüz səbəb saya bilirəm, amma heç biri sevgimin tam ölçüsü deyil: mən səni yalnız yaşadıqlarımıza görə yox, olduğun insan olduğun üçün sevirəm, Əsmərim."
+        ];
+        const listContainer = document.getElementById('reasons-list');
+        reasons.forEach((reason, index) => {
+            const div = document.createElement('div');
+            div.className = "flex gap-3 kafka-text";
+            div.innerHTML = `<span class="text-pink-500 font-bold shrink-0 w-6 text-right">${index + 1}.</span><span>${reason}</span>`;
+            listContainer.appendChild(div);
+        });
+
+        let scene, camera, renderer, controls, animationId;
+        let is3DInitialized = false;
+        
+        function init3D() {
+            if(is3DInitialized) return;
+            is3DInitialized = true;
+
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.set(1600, 800, -894); 
+
+            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 2000;
+            controls.maxDistance = 2000; 
+            controls.enableZoom = false; 
+            controls.enablePan = false;
+            controls.target.set(0, 0, 0);
+
+            buildAnamorphicSphere();
+            addAmbientStars();
+            window.addEventListener('resize', onWindowResize, false);
+            animate3D();
+        }
+
+        function buildAnamorphicSphere() {
+            const circleCanvas = document.createElement('canvas');
+            circleCanvas.width = 32; circleCanvas.height = 32;
+            const circleCtx = circleCanvas.getContext('2d');
+            const grad = circleCtx.createRadialGradient(16, 16, 0, 16, 16, 15);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            circleCtx.fillStyle = grad;
+            circleCtx.beginPath();
+            circleCtx.arc(16, 16, 16, 0, Math.PI * 2);
+            circleCtx.fill();
+            const particleTexture = new THREE.CanvasTexture(circleCanvas);
+
+            const textCanvasSize = 1024;
+            const textCanvas = document.createElement('canvas');
+            const ctx = textCanvas.getContext('2d');
+            textCanvas.width = textCanvasSize;
+            textCanvas.height = textCanvasSize;
+
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, textCanvasSize, textCanvasSize);
+            ctx.fillStyle = 'white';
+            ctx.font = '900 170px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('SƏNİ', textCanvasSize / 2, textCanvasSize / 2 - 100);
+            ctx.fillText('SEVİRƏM', textCanvasSize / 2, textCanvasSize / 2 + 100);
+
+            const imgData = ctx.getImageData(0, 0, textCanvasSize, textCanvasSize).data;
+            function isText(px, py) {
+                if (px < 0 || px >= textCanvasSize || py < 0 || py >= textCanvasSize) return false;
+                return imgData[(py * textCanvasSize + px) * 4] > 128; 
+            }
+
+            const positions = [];
+            const colors = [];
+            const RADIUS = 900;           
+            const CAMERA_Z = 2000;        
+            const PLANE_WIDTH = 1300;     
+
+            const cosmicColors = [
+                new THREE.Color(0xff0066),
+                new THREE.Color(0x00ffff),
+                new THREE.Color(0x9d4edd),
+                new THREE.Color(0xffffff)
+            ];
+
+            let textDotsAdded = 0;
+            while (textDotsAdded < 20000) {
+                let px = Math.floor(Math.random() * textCanvasSize);
+                let py = Math.floor(Math.random() * textCanvasSize);
+                
+                if (isText(px, py)) {
+                    let x_proj = ((px - textCanvasSize / 2) / (textCanvasSize / 2)) * (PLANE_WIDTH / 2);
+                    let y_proj = -((py - textCanvasSize / 2) / (textCanvasSize / 2)) * (PLANE_WIDTH / 2);
+                    let z = (Math.random() * 2 - 1) * RADIUS;
+                    let x = x_proj * (CAMERA_Z - z) / CAMERA_Z;
+                    let y = y_proj * (CAMERA_Z - z) / CAMERA_Z;
+                    
+                    if (x*x + y*y + z*z <= RADIUS * RADIUS) {
+                        positions.push(x, y, z);
+                        let mixedColor = cosmicColors[0].clone().lerp(cosmicColors[1], Math.random());
+                        colors.push(mixedColor.r, mixedColor.g, mixedColor.b);
+                        textDotsAdded++;
+                    }
+                }
+            }
+
+            let noiseDotsAdded = 0;
+            while (noiseDotsAdded < 45000) {
+                let u = Math.random();
+                let v = Math.random();
+                let theta = u * 2.0 * Math.PI;
+                let phi = Math.acos(2.0 * v - 1.0);
+                let r = RADIUS * Math.cbrt(Math.random());
+                
+                let x = r * Math.sin(phi) * Math.cos(theta);
+                let y = r * Math.sin(phi) * Math.sin(theta);
+                let z = r * Math.cos(phi);
+                
+                let x_proj = x * CAMERA_Z / (CAMERA_Z - z);
+                let y_proj = y * CAMERA_Z / (CAMERA_Z - z);
+                let px = Math.floor((x_proj / (PLANE_WIDTH / 2)) * (textCanvasSize / 2) + (textCanvasSize / 2));
+                let py = Math.floor((-y_proj / (PLANE_WIDTH / 2)) * (textCanvasSize / 2) + (textCanvasSize / 2));
+                
+                if (!isText(px, py)) {
+                    positions.push(x, y, z);
+                    let randomColor = cosmicColors[Math.floor(Math.random() * cosmicColors.length)];
+                    colors.push(randomColor.r, randomColor.g, randomColor.b);
+                    noiseDotsAdded++;
+                }
+            }
+            
+            const pointGeo = new THREE.BufferGeometry();
+            pointGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            pointGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const pointMat = new THREE.PointsMaterial({
+                size: 3.5,
+                map: particleTexture, 
+                vertexColors: true, 
+                transparent: true, 
+                opacity: 0.8, 
+                blending: THREE.AdditiveBlending, 
+                depthWrite: false,
+                alphaTest: 0.1
+            });
+            
+            const pointMesh = new THREE.Points(pointGeo, pointMat);
+            scene.add(pointMesh);
+        }
+
+        function addAmbientStars() {
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 8000; 
+            const starPos = [];
+            const starColors = [];
+            
+            for(let i=0; i<starCount; i++) {
+                starPos.push((Math.random() - 0.5) * 10000);
+                starPos.push((Math.random() - 0.5) * 10000);
+                starPos.push((Math.random() - 0.5) * 10000);
+                
+                const c = new THREE.Color();
+                c.setHSL(Math.random(), 0.6, Math.random() * 0.4 + 0.4); 
+                starColors.push(c.r, c.g, c.b);
+            }
+            
+            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
+            starGeo.setAttribute('color', new THREE.Float32BufferAttribute(starColors, 3));
+            
+            const starMat = new THREE.PointsMaterial({
+                size: 2.0, 
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.5,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            
+            const stars = new THREE.Points(starGeo, starMat);
+            scene.add(stars);
+        }
+        
+        function onWindowResize() {
+            if(!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate3D() {
+            animationId = requestAnimationFrame(animate3D);
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
